@@ -61,14 +61,16 @@ pipeline {
             fi
 
             # run sonarscanner
-            sonar-scanner \
-              -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
-              -Dsonar.organization="${SONAR_ORG}" \
-              -Dsonar.host.url="https://sonarcloud.io" \
-              -Dsonar.login="${SONAR_TOKEN}" \
-              -Dsonar.sources="." \
-              -Dsonar.exclusions="node_modules/**,test/**" \
-              -Dsonar.javascript.lcov.reportPaths="coverage/lcov.info"
+            ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner \
+                        -Dsonar.projectKey=sahil-raval1012_8.2CDevSecOps \
+                        -Dsonar.organization=sahil-raval1012 \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=node_modules/**,test/** \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    
+                    echo "SonarCloud analysis completed"
           '''
         }
       }
