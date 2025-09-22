@@ -56,17 +56,17 @@ pipeline {
                     # Remove any existing scanner to avoid conflicts
                     rm -rf sonar-scanner-*
                     
-                    # Download SonarScanner CLI
-                    curl -o sonar-scanner-cli-4.8.0.2856-linux.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+                    # Download SonarScanner CLI for macOS
+                    curl -o sonar-scanner-cli-4.8.0.2856-macosx.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-macosx.zip
                     
                     # Extract with overwrite flag to avoid prompts
-                    unzip -o sonar-scanner-cli-4.8.0.2856-linux.zip
+                    unzip -o sonar-scanner-cli-4.8.0.2856-macosx.zip
                     
                     # Make scanner executable
-                    chmod +x sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner
+                    chmod +x sonar-scanner-4.8.0.2856-macosx/bin/sonar-scanner
                     
                     # Run SonarCloud analysis
-                    ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner \
+                    ./sonar-scanner-4.8.0.2856-macosx/bin/sonar-scanner \
                         -Dsonar.projectKey=sahil-raval1012_8.2CDevSecOps \
                         -Dsonar.organization=sahil-raval1012 \
                         -Dsonar.host.url=https://sonarcloud.io \
