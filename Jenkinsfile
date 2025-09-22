@@ -1,5 +1,5 @@
 pipeline {
-  agent { docker { image 'node:18-bullseye' } }
+  agent any
 
   environment {
     SONAR_PROJECT_KEY = 'Sahil-Raval1012_8.2CDevSecOps'
@@ -22,7 +22,6 @@ pipeline {
     stage('Run Tests & Coverage') {
       steps {
         sh 'npm test || true'
-        // Ensure your test command generates coverage/lcov.info
       }
     }
 
@@ -30,11 +29,13 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
           sh '''
-            apt-get update -qq && apt-get install -y -qq curl unzip
-            SCANNER_VER=4.8.0.2856
-            curl -sSLo scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VER}-linux.zip"
-            unzip -q scanner.zip
-            export PATH=$PWD/$(ls -d sonar-scanner-*-linux)/bin:$PATH
+            if ! command -v sonar-scanner >/dev/null; then
+              echo "SonarScanner not found. Installing..."
+              SCANNER_VER=4.8.0.2856
+              curl -sSLo scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VER}-linux.zip"
+              unzip -q scanner.zip
+              export PATH=$PWD/$(ls -d sonar-scanner-*-linux)/bin:$PATH
+            fi
 
             sonar-scanner \
               -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
@@ -56,5 +57,4 @@ pipeline {
     }
   }
 }
-
 
