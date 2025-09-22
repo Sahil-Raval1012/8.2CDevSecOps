@@ -1,76 +1,49 @@
 pipeline {
-  agent any
+  agent { docker { image 'node:18-bullseye' } }
 
   environment {
-    GIT_REPO = 'https://github.com/your_github_username/8.2CDevSecOps.git'
-    SONAR_PROJECT_KEY = 'yourname_8.2CDevSecOps'   // replace
-    SONAR_ORG = 'your_sonarcloud_org'             // replace
+    SONAR_PROJECT_KEY = 'Sahil-Raval1012_8.2CDevSecOps'
+    SONAR_ORG = 'sahil-raval1012'
   }
 
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', url: env.GIT_REPO
+        git branch: 'main', url: 'https://github.com/Sahil-Raval1012/8.2CDevSecOps.git'
       }
     }
 
     stage('Install Dependencies') {
       steps {
-        sh 'npm install'
+        sh 'npm ci'
       }
     }
 
-    stage('Run Tests') {
+    stage('Run Tests & Coverage') {
       steps {
-        sh 'npm test || true'   // allow tests to fail but continue pipeline
-      }
-    }
-
-    stage('Generate Coverage Report') {
-      steps {
-        // ensure your package.json has a coverage script (e.g., nyc mocha)
-        sh 'npm run coverage || true'
-      }
-    }
-
-    stage('NPM Audit (Security Scan)') {
-      steps {
-        sh 'npm audit --json > npm-audit.json || true'
-        sh 'cat npm-audit.json || true'
+        sh 'npm test || true'
+        // Ensure your test command generates coverage/lcov.info
       }
     }
 
     stage('SonarCloud Analysis') {
       steps {
-        // SONAR_TOKEN must be added into Jenkins credentials with ID 'SONAR_TOKEN'
         withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
           sh '''
-            set -e
-            # --- download sonar-scanner CLI (adjust version if needed) ---
+            apt-get update -qq && apt-get install -y -qq curl unzip
             SCANNER_VER=4.8.0.2856
-            curl -sSLo sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VER}-linux.zip"
-            unzip -q sonar-scanner.zip
-            SCANNER_DIR=$(ls -d sonar-scanner-*-linux || true)
-            export PATH=$PWD/${SCANNER_DIR}/bin:$PATH
+            curl -sSLo scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VER}-linux.zip"
+            unzip -q scanner.zip
+            export PATH=$PWD/$(ls -d sonar-scanner-*-linux)/bin:$PATH
 
-            # confirm coverage file path used by sonar
-            if [ -f coverage/lcov.info ]; then
-              echo "lcov found"
-            else
-              echo "lcov missing - continuing anyway"
-            fi
-
-            # run sonarscanner
-            ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner \
-                        -Dsonar.projectKey=sahil-raval1012_8.2CDevSecOps \
-                        -Dsonar.organization=sahil-raval1012 \
-                        -Dsonar.host.url=https://sonarcloud.io \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.sources=. \
-                        -Dsonar.exclusions=node_modules/**,test/** \
-                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-                    
-                    echo "SonarCloud analysis completed"
+            sonar-scanner \
+              -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
+              -Dsonar.organization="${SONAR_ORG}" \
+              -Dsonar.host.url="https://sonarcloud.io" \
+              -Dsonar.login="${SONAR_TOKEN}" \
+              -Dsonar.sources=. \
+              -Dsonar.exclusions="node_modules/**,test/**" \
+              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
           '''
         }
       }
@@ -79,9 +52,9 @@ pipeline {
 
   post {
     always {
-      // save files you need for the report/video
-      archiveArtifacts artifacts: 'npm-audit.json,coverage/**,sonar-scanner.zip', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'npm-audit.json,coverage/**', allowEmptyArchive: true
     }
   }
 }
+
 
