@@ -2,6 +2,7 @@ pipeline {
     agent any
     environment {
         PATH = "/opt/homebrew/bin:/usr/local/bin:$PATH"
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
     }
     stages {
         stage('Install Dependencies') {
@@ -33,6 +34,32 @@ pipeline {
         stage('NPM Audit (Security Scan)') {
             steps {
                 sh 'npm audit || true'
+            }
+        }
+        stage('SonarCloud Analysis') {
+            steps {
+                sh '''
+                    echo "Starting SonarCloud analysis..."
+                    
+                    # Download SonarScanner CLI
+                    wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+                    unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
+                    
+                    # Make scanner executable
+                    chmod +x sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner
+                    
+                    # Run SonarCloud analysis
+                    ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner \
+                        -Dsonar.projectKey=sahil-raval1012_8.2CDevSecOps \
+                        -Dsonar.organization=sahil-raval1012 \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=node_modules/**,test/** \
+                        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    
+                    echo "SonarCloud analysis completed"
+                '''
             }
         }
     }
