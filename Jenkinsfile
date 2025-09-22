@@ -1,133 +1,85 @@
 pipeline {
-    agent any
-    
-    environment {
-        PATH = "/opt/homebrew/bin:/usr/local/bin:$PATH"
-        SONAR_TOKEN = credentials('SONAR_TOKEN')
-        SCANNER_VERSION = '4.7.0.2747'
-        SCANNER_HOME = "${WORKSPACE}/sonar-scanner-${SCANNER_VERSION}-macosx"
+  agent any
+
+  environment {
+    GIT_REPO = 'https://github.com/your_github_username/8.2CDevSecOps.git'
+    SONAR_PROJECT_KEY = 'yourname_8.2CDevSecOps'   // replace
+    SONAR_ORG = 'your_sonarcloud_org'             // replace
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: env.GIT_REPO
+      }
     }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/Sahil-Raval1012/8.2CDevSecOps.git'
-            }
-        }
-        
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                    echo "=== Environment Check ==="
-                    echo "Node.js location: $(which node)"
-                    echo "npm location: $(which npm)"
-                    echo "Node version: $(node --version)"
-                    echo "npm version: $(npm --version)"
-                    echo "Current directory: $(pwd)"
-                    
-                    echo "=== Installing Dependencies ==="
-                    npm install
-                    echo "Dependencies installed successfully"
-                '''
-            }
-        }
-        
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    echo "=== Running Tests ==="
-                    npm test || true
-                '''
-            }
-        }
-        
-        stage('Generate Coverage Report') {
-            steps {
-                sh '''
-                    echo "=== Generating Coverage Report ==="
-                    npm run coverage || true
-                    
-                    # Check if coverage report was generated
-                    if [ -f "coverage/lcov.info" ]; then
-                        echo "Coverage report generated successfully"
-                        echo "Coverage file size: $(du -h coverage/lcov.info)"
-                    else
-                        echo "Warning: Coverage report not found"
-                    fi
-                '''
-            }
-        }
-        
-        stage('NPM Audit (Security Scan)') {
-            steps {
-                sh '''
-                    echo "=== Running NPM Security Audit ==="
-                    npm audit --audit-level=high || true
-                    
-                    echo "=== NPM Audit Summary ==="
-                    npm audit --parseable | head -20 || true
-                '''
-            }
-        }
-        
-        stage('SonarCloud Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        echo "=== Starting SonarCloud Analysis ==="
-                        
-                        # Clean up any existing scanner installations
-                        rm -rf sonar-scanner-*
-                        
-                        echo "=== Downloading SonarScanner CLI ==="
-                        curl -o sonar-scanner-cli-${SCANNER_VERSION}-macosx.zip \
-                             -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VERSION}-macosx.zip
-                        
-                        echo "=== Extracting SonarScanner ==="
-                        unzip -o sonar-scanner-cli-${SCANNER_VERSION}-macosx.zip
-                        
-                        # Make scanner executable
-                        chmod +x ${SCANNER_HOME}/bin/sonar-scanner
-                        
-                        echo "=== Verifying SonarScanner Installation ==="
-                        ${SCANNER_HOME}/bin/sonar-scanner --version
-                        
-                        echo "=== Running SonarCloud Analysis ==="
-                        ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectKey=sahil-raval1012_8.2CDevSecOps \
-                            -Dsonar.organization=sahil-raval1012 \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.sources=. \
-                            -Dsonar.exclusions=node_modules/**,test/**,sonar-scanner-*,coverage/** \
-                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                            -Dsonar.projectName="NodeJS Goof Vulnerable App" \
-                            -Dsonar.sourceEncoding=UTF-8 \
-                            -Dsonar.verbose=true
-                        
-                        echo "=== SonarCloud Analysis Completed ==="
-                        echo "Check your SonarCloud dashboard at: https://sonarcloud.io/project/overview?id=sahil-raval1012_8.2CDevSecOps"
-                    '''
-                }
-            }
-        }
+
+    stage('Install Dependencies') {
+      steps {
+        sh 'npm install'
+      }
     }
-    
-    post {
-        always {
-            echo "=== Pipeline Execution Summary ==="
-            echo "Pipeline completed at: ${new Date()}"
-            
-            // Clean up downloaded scanner files to save space
-            sh 'rm -rf sonar-scanner-* || true'
-        }
-        success {
-            echo "=== Pipeline Succeeded ==="
-            echo "All stages completed successfully!"
-        }
-        failure {
-            echo "=== Pipeline Failed ==="
-            echo "Check the console output for error details"
-        }
+
+    stage('Run Tests') {
+      steps {
+        sh 'npm test || true'   // allow tests to fail but continue pipeline
+      }
     }
+
+    stage('Generate Coverage Report') {
+      steps {
+        // ensure your package.json has a coverage script (e.g., nyc mocha)
+        sh 'npm run coverage || true'
+      }
+    }
+
+    stage('NPM Audit (Security Scan)') {
+      steps {
+        sh 'npm audit --json > npm-audit.json || true'
+        sh 'cat npm-audit.json || true'
+      }
+    }
+
+    stage('SonarCloud Analysis') {
+      steps {
+        // SONAR_TOKEN must be added into Jenkins credentials with ID 'SONAR_TOKEN'
+        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+          sh '''
+            set -e
+            # --- download sonar-scanner CLI (adjust version if needed) ---
+            SCANNER_VER=4.8.0.2856
+            curl -sSLo sonar-scanner.zip "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VER}-linux.zip"
+            unzip -q sonar-scanner.zip
+            SCANNER_DIR=$(ls -d sonar-scanner-*-linux || true)
+            export PATH=$PWD/${SCANNER_DIR}/bin:$PATH
+
+            # confirm coverage file path used by sonar
+            if [ -f coverage/lcov.info ]; then
+              echo "lcov found"
+            else
+              echo "lcov missing - continuing anyway"
+            fi
+
+            # run sonarscanner
+            sonar-scanner \
+              -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
+              -Dsonar.organization="${SONAR_ORG}" \
+              -Dsonar.host.url="https://sonarcloud.io" \
+              -Dsonar.login="${SONAR_TOKEN}" \
+              -Dsonar.sources="." \
+              -Dsonar.exclusions="node_modules/**,test/**" \
+              -Dsonar.javascript.lcov.reportPaths="coverage/lcov.info"
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      // save files you need for the report/video
+      archiveArtifacts artifacts: 'npm-audit.json,coverage/**,sonar-scanner.zip', allowEmptyArchive: true
+    }
+  }
 }
+
