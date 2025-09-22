@@ -41,8 +41,8 @@ pipeline {
                 sh '''
                     echo "Starting SonarCloud analysis..."
                     
-                    # Download SonarScanner CLI
-                    wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+                    # Download SonarScanner CLI using curl (macOS compatible)
+                    curl -o sonar-scanner-cli-4.8.0.2856-linux.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
                     unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
                     
                     # Make scanner executable
